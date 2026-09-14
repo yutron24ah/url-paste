@@ -6,11 +6,12 @@
  * GET  /health         疎通確認
  *
  * サーバーは暗号化済みの不透明なデータしか受け取らない。
- * 復号鍵はURLのハッシュ部分にのみ存在し、サーバーには届かない。
+ * 復号鍵は合言葉から利用者のブラウザ内で導出される。合言葉はサーバーに届かない。
+ * saltは秘密ではないのでレコードと一緒に保存する。
  */
 
 const ID_ALPHABET = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'; // 紛らわしい文字(0,1,I,O,l,o)を除外
-const ID_LENGTH = 8;
+const ID_LENGTH = 5; // 56^5 ≈ 5.5億通り
 const MAX_BODY_BYTES = 256 * 1024; // 256KB
 const ALLOWED_TTL = new Set([3600, 86400, 604800, 2592000]); // 1時間 / 1日 / 7日 / 30日
 const DEFAULT_TTL = 604800;
@@ -76,9 +77,9 @@ async function handleCreate(request, env) {
     return json({ error: 'bad_json' }, 400, request, env);
   }
 
-  const { c, iv, burn } = body || {};
-  if (!isB64(c, MAX_BODY_BYTES) || !isB64(iv, 64)) {
-    return json({ error: 'bad_request', message: 'c / iv が不正です' }, 400, request, env);
+  const { c, iv, s, burn } = body || {};
+  if (!isB64(c, MAX_BODY_BYTES) || !isB64(iv, 64) || !isB64(s, 64)) {
+    return json({ error: 'bad_request', message: 'c / iv / s が不正です' }, 400, request, env);
   }
 
   let ttl = Number(body.ttl);
@@ -96,7 +97,7 @@ async function handleCreate(request, env) {
   }
   if (!id) return json({ error: 'id_conflict' }, 503, request, env);
 
-  const record = JSON.stringify({ c, iv, burn: burn === true, createdAt: Date.now() });
+  const record = JSON.stringify({ c, iv, s, burn: burn === true, createdAt: Date.now() });
   await env.PASTES.put(id, record, { expirationTtl: ttl });
 
   return json({ id, ttl, expiresAt: Date.now() + ttl * 1000 }, 201, request, env);
@@ -124,7 +125,7 @@ async function handleRead(id, request, env) {
     await env.PASTES.delete(id);
   }
 
-  return json({ c: record.c, iv: record.iv, burn: !!record.burn }, 200, request, env);
+  return json({ c: record.c, iv: record.iv, s: record.s, burn: !!record.burn }, 200, request, env);
 }
 
 export default {
