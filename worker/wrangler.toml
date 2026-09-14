@@ -1,0 +1,14 @@
+name = "urlpaste-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 本番で公開するGitHub PagesのオリジンをCORS許可リストに入れる。
+# 例: "https://<あなたのGitHubユーザー名>.github.io"
+# ローカル確認用に http://localhost:8000 などを足してもよい（カンマ区切り）。
+[vars]
+ALLOWED_ORIGINS = "https://example.github.io,http://localhost:8000"
+
+# `wrangler kv namespace create PASTES` で作って、出力されたidをここに貼る
+[[kv_namespaces]]
+binding = "PASTES"
+id = "ここにKVのidを貼る"

@@ -1,0 +1,16 @@
+{
+  "name": "url-paste",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "テキストを貼ると短いURLができる。GitHub Pages + Cloudflare Workers/KV。",
+  "scripts": {
+    "test": "node test.mjs",
+    "test:e2e": "node e2e.mjs",
+    "deploy": "cd worker && wrangler deploy"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0",
+    "qrcode-generator": "^1.4.4"
+  }
+}

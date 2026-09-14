@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>URL Paste</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --border: #e3e1dc;
+    --text: #24211c;
+    --muted: #74706a;
+    --accent: #2f6f4e;
+    --accent-text: #ffffff;
+    --danger: #a33a2c;
+    --code-bg: #f2f1ed;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a;
+      --panel: #202024;
+      --border: #35353b;
+      --text: #e9e7e3;
+      --muted: #9b9790;
+      --accent: #5aab81;
+      --accent-text: #10140f;
+      --danger: #e08a7c;
+      --code-bg: #1a1a1e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 56px;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+  h1 { font-size: 19px; margin: 0; letter-spacing: .01em; }
+  header .sub { font-size: 12.5px; color: var(--muted); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 260px;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--code-bg);
+    color: var(--text);
+    font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  textarea:focus, select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row {
+    display: flex; flex-wrap: wrap; gap: 12px 18px;
+    align-items: center; margin-top: 14px;
+  }
+  label.field { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--muted); }
+  select {
+    padding: 7px 9px; border-radius: 7px; font: inherit; font-size: 13.5px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  }
+  .spacer { flex: 1 1 auto; }
+  button {
+    font: inherit; font-size: 14px; cursor: pointer;
+    border-radius: 8px; padding: 9px 16px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.primary:disabled { opacity: .55; cursor: default; }
+  .counter { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .result-url {
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+  .result-url input {
+    flex: 1 1 auto; min-width: 0;
+    padding: 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--code-bg); color: var(--text);
+    font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .qr { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .qr .box {
+    background: #fff; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--border); line-height: 0;
+  }
+  .qr svg { width: 132px; height: 132px; display: block; }
+  .meta { font-size: 12.5px; color: var(--muted); }
+  pre.view {
+    margin: 0; padding: 14px;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    white-space: pre-wrap; word-break: break-word; overflow-x: auto;
+    font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    max-height: 62vh; overflow-y: auto;
+  }
+  .notice { font-size: 13px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--code-bg); }
+  .notice.warn { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .hidden { display: none !important; }
+  footer { margin-top: 20px; font-size: 12px; color: var(--muted); text-align: center; }
+  a { color: var(--accent); }
+  .loading { text-align: center; color: var(--muted); padding: 32px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>URL Paste</h1>
+    <span class="sub">貼る → URLができる → 開くと読める</span>
+  </header>
+
+  <!-- ============ 作成画面 ============ -->
+  <section id="editor" class="panel">
+    <textarea id="text" placeholder="ここにテキストを貼り付け…" spellcheck="false" autofocus></textarea>
+    <div class="row">
+      <label class="field">
+        有効期限
+        <select id="ttl">
+          <option value="3600">1時間</option>
+          <option value="86400">1日</option>
+          <option value="604800" selected>7日</option>
+          <option value="2592000">30日</option>
+        </select>
+      </label>
+      <label class="field">
+        <input type="checkbox" id="burn"> 一回読んだら消す
+      </label>
+      <span class="spacer"></span>
+      <span class="counter" id="counter">0 文字</span>
+      <button class="primary" id="create" disabled>URLを作る</button>
+    </div>
+    <div class="row hidden" id="editorError"><span class="notice warn" id="editorErrorText"></span></div>
+  </section>
+
+  <!-- ============ 生成結果 ============ -->
+  <section id="result" class="panel hidden">
+    <div class="result-url">
+      <input id="resultUrl" readonly>
+      <button id="copyUrl">コピー</button>
+    </div>
+    <div class="qr">
+      <div class="box" id="qr"></div>
+      <div>
+        <div class="meta" id="resultMeta"></div>
+        <div class="row" style="margin-top:10px">
+          <button id="again">新しく作る</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 閲覧画面 ============ -->
+  <section id="viewer" class="panel hidden">
+    <div class="row hidden" id="burnNotice" style="margin:0 0 12px">
+      <span class="notice warn">このテキストは閲覧と同時にサーバーから削除されました。このページを閉じると二度と開けません。</span>
+    </div>
+    <pre class="view" id="viewText"></pre>
+    <div class="row">
+      <span class="counter" id="viewCounter"></span>
+      <span class="spacer"></span>
+      <button id="copyText">本文をコピー</button>
+      <button class="primary" id="newFromView">新しく作る</button>
+    </div>
+  </section>
+
+  <section id="loading" class="panel hidden"><div class="loading">読み込み中…</div></section>
+  <section id="viewerError" class="panel hidden">
+    <div class="notice warn" id="viewerErrorText"></div>
+    <div class="row"><span class="spacer"></span><button class="primary" id="newFromError">新しく作る</button></div>
+  </section>
+
+  <footer>本文はブラウザ側で暗号化されます。復号鍵はURLの <code>#</code> より後ろにだけ存在し、サーバーには送信されません。</footer>
+</div>
+
+<script src="qrcode.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ▼▼▼ デプロイ後にここを自分のWorkerのURLに書き換える ▼▼▼
+  var API_BASE = 'https://urlpaste-api.YOUR-SUBDOMAIN.workers.dev';
+  // ▲▲▲ 末尾のスラッシュは付けない ▲▲▲
+
+  var MAX_CHARS = 100000;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (el) { el.classList.remove('hidden'); };
+  var hide = function (el) { el.classList.add('hidden'); };
+
+  /* ---------- base64url ---------- */
+  function bytesToB64u(bytes) {
+    var bin = '';
+    var arr = new Uint8Array(bytes);
+    for (var i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function b64uToBytes(s) {
+    var t = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (t.length % 4) t += '=';
+    var bin = atob(t);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  /* ---------- 暗号化 / 復号 (AES-GCM 256) ---------- */
+  async function encrypt(text) {
+    var key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var data = new TextEncoder().encode(text);
+    var ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    var rawKey = await crypto.subtle.exportKey('raw', key);
+    return { c: bytesToB64u(ct), iv: bytesToB64u(iv), k: bytesToB64u(rawKey) };
+  }
+  async function decrypt(cB64, ivB64, kB64) {
+    var key = await crypto.subtle.importKey('raw', b64uToBytes(kB64), { name: 'AES-GCM' }, false, ['decrypt']);
+    var pt = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64uToBytes(ivB64) }, key, b64uToBytes(cB64)
+    );
+    return new TextDecoder().decode(pt);
+  }
+
+  /* ---------- クリップボード ---------- */
+  async function copyToClipboard(value, button) {
+    var original = button.dataset.label || button.textContent;
+    button.dataset.label = original;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = value;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      button.textContent = 'コピーしました';
+    } catch (e) {
+      button.textContent = 'コピー失敗';
+    }
+    setTimeout(function () { button.textContent = original; }, 1600);
+  }
+
+  /* ---------- QRコード ---------- */
+  function renderQR(url, container) {
+    container.innerHTML = '';
+    try {
+      var qr = qrcode(0, 'M');       // 0 = バージョン自動選択, M = 誤り訂正レベル
+      qr.addData(url);
+      qr.make();
+      container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    } catch (e) {
+      container.innerHTML = '<div class="meta" style="line-height:1.5;padding:8px">QR生成不可<br>（URLが長すぎます）</div>';
+    }
+  }
+
+  /* ---------- 作成 ---------- */
+  var textEl = $('text'), counterEl = $('counter'), createBtn = $('create');
+
+  function updateCounter() {
+    var n = textEl.value.length;
+    counterEl.textContent = n.toLocaleString() + ' 文字';
+    createBtn.disabled = n === 0 || n > MAX_CHARS;
+    counterEl.style.color = n > MAX_CHARS ? 'var(--danger)' : '';
+  }
+  textEl.addEventListener('input', updateCounter);
+  updateCounter();
+
+  function editorError(msg) {
+    $('editorErrorText').textContent = msg;
+    show($('editorError'));
+  }
+
+  async function create() {
+    hide($('editorError'));
+    createBtn.disabled = true;
+    createBtn.textContent = '作成中…';
+    try {
+      var enc = await encrypt(textEl.value);
+      var res = await fetch(API_BASE + '/api/paste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          c: enc.c, iv: enc.iv,
+          ttl: Number($('ttl').value),
+          burn: $('burn').checked
+        })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.message || ('サーバーエラー (' + res.status + ')'));
+
+      var url = location.origin + location.pathname + '#' + data.id + '.' + enc.k;
+      $('resultUrl').value = url;
+      renderQR(url, $('qr'));
+
+      var expires = new Date(data.expiresAt);
+      $('resultMeta').innerHTML =
+        '有効期限: ' + expires.toLocaleString('ja-JP') + '<br>' +
+        ($('burn').checked ? '一回読まれたら削除されます' : '期限が来ると自動的に消えます');
+
+      hide($('editor'));
+      show($('result'));
+      $('resultUrl').select();
+    } catch (e) {
+      editorError('作成に失敗しました: ' + e.message);
+    } finally {
+      createBtn.textContent = 'URLを作る';
+      updateCounter();
+    }
+  }
+
+  createBtn.addEventListener('click', create);
+  textEl.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !createBtn.disabled) create();
+  });
+
+  $('copyUrl').addEventListener('click', function () { copyToClipboard($('resultUrl').value, this); });
+  $('again').addEventListener('click', function () {
+    location.hash = '';
+    location.reload();
+  });
+
+  /* ---------- 閲覧 ---------- */
+  async function view(id, key) {
+    hide($('editor'));
+    show($('loading'));
+    try {
+      var res = await fetch(API_BASE + '/api/paste/' + encodeURIComponent(id));
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.message || ('取得できませんでした (' + res.status + ')'));
+
+      var text = await decrypt(data.c, data.iv, key).catch(function () {
+        throw new Error('復号できませんでした。URLが途中で切れているかもしれません。');
+      });
+
+      $('viewText').textContent = text;
+      $('viewCounter').textContent = text.length.toLocaleString() + ' 文字';
+      if (data.burn) show($('burnNotice'));
+      hide($('loading'));
+      show($('viewer'));
+    } catch (e) {
+      $('viewerErrorText').textContent = e.message;
+      hide($('loading'));
+      show($('viewerError'));
+    }
+  }
+
+  $('copyText').addEventListener('click', function () { copyToClipboard($('viewText').textContent, this); });
+
+  var reloading = false;
+  function goNew() { reloading = true; location.hash = ''; location.reload(); }
+  $('newFromView').addEventListener('click', goNew);
+  $('newFromError').addEventListener('click', goNew);
+
+  // アドレスバーに別のURLを貼られた場合など、ハッシュだけ変わったときも読み直す
+  window.addEventListener('hashchange', function () {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
+  /* ---------- 起動 ---------- */
+  var hash = location.hash.replace(/^#/, '');
+  var m = hash.match(/^([0-9A-Za-z]{4,32})\.([A-Za-z0-9_-]{20,})$/);
+  if (m) {
+    view(m[1], m[2]);
+  }
+})();
+</script>
+</body>
+</html>
