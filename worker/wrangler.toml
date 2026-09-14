@@ -6,9 +6,9 @@ compatibility_date = "2026-01-01"
 # 例: "https://<あなたのGitHubユーザー名>.github.io"
 # ローカル確認用に http://localhost:8000 などを足してもよい（カンマ区切り）。
 [vars]
-ALLOWED_ORIGINS = "https://example.github.io,http://localhost:8000"
+ALLOWED_ORIGINS = "https://yutron24ah.github.io"
 
 # `wrangler kv namespace create PASTES` で作って、出力されたidをここに貼る
 [[kv_namespaces]]
 binding = "PASTES"
-id = "ここにKVのidを貼る"
+id = "d306ef9bb2524778b34591965c184f91"

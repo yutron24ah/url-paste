@@ -41,6 +41,15 @@ e2e.mjs          Chromiumでの実動作テスト（15項目）
 
 ## セットアップ
 
+### 0. 一括セットアップ（おすすめ）
+
+```bash
+./setup-cloudflare.sh
+```
+
+Cloudflareへのログイン、KVネームスペース作成、`wrangler.toml` へのid埋め込み、Workerのデプロイ、
+`site/index.html` の `API_BASE` 書き換えまでを通しでやる。以下は中身の手動版。
+
 ### 1. Cloudflare Workers（API側）
 
 ```bash

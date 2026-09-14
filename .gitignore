@@ -1,2 +1,5 @@
 node_modules/
 shot-*.png
+
+# wrangler のローカルキャッシュ（アカウントIDなどが入る）
+.wrangler/
